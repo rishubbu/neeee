@@ -1,64 +1,59 @@
 import os
 from unidecode import unidecode
-from PIL import ImageDraw, Image, ImageFont, ImageChops
+from PIL import ImageDraw, Image, ImageFont, Image
 from pyrogram import *
 from pyrogram.types import *
 from logging import getLogger
-from ShrutiMusic import LOGGER
-from pyrogram.types import Message
-from ShrutiMusic.misc import SUDOERS
-from ShrutiMusic import app
-from ShrutiMusic.utils.database import *
+from ShrutiMusic import LOGGER, app
 from ShrutiMusic.utils.database import db
 
-# Welcome collection
 try:
     wlcm = db.welcome
 except:
-    # Alternative database import
     from ShrutiMusic.utils.database import welcome as wlcm
 
 LOGGER = getLogger(__name__)
 
 class temp:
-    ME = None
-    CURRENT = 2
-    CANCEL = False
     MELCOW = {}
-    U_NAME = None
-    B_NAME = None
 
-def circle(pfp, size=(450, 450)):
-    pfp = pfp.resize(size, Image.LANCZOS).convert("RGBA")
-    bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
-    mask = Image.new("L", bigsize, 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0) + bigsize, fill=255)
-    mask = mask.resize(pfp.size, Image.LANCZOS)
-    mask = ImageChops.darker(mask, pfp.split()[-1])
-    pfp.putalpha(mask)
-    return pfp
-
-def welcomepic(pic, user, chat, id, uname):
-    background = Image.open("ShrutiMusic/assets/welcome.png")
-    pfp = Image.open(pic).convert("RGBA")
-    pfp = circle(pfp)
-    pfp = pfp.resize((450, 450)) 
+# ✅ Modern Stylish Welcome Card (without profile photo)
+def welcomepic(user, chat, id, uname):
+    # Base background
+    background = Image.open("ShrutiMusic/assets/welcome.png").convert("RGBA")
     draw = ImageDraw.Draw(background)
-    font = ImageFont.truetype('ShrutiMusic/assets/font.ttf', size=45)
-    font2 = ImageFont.truetype('ShrutiMusic/assets/font.ttf', size=90)
-    draw.text((65, 250), f'NAME : {unidecode(user)}', fill="white", font=font)
-    draw.text((65, 340), f'ID : {id}', fill="white", font=font)
-    draw.text((65, 430), f"USERNAME : {uname}", fill="white", font=font)
-    pfp_position = (767, 133)  
-    background.paste(pfp, pfp_position, pfp)  
-    background.save(f"downloads/welcome#{id}.png")
-    return f"downloads/welcome#{id}.png"
 
-# ✅ `/welcome` Command: Enable/Disable Special Welcome
+    # Fonts
+    font_big = ImageFont.truetype("ShrutiMusic/assets/font.ttf", size=95)
+    font_med = ImageFont.truetype("ShrutiMusic/assets/font.ttf", size=55)
+    font_small = ImageFont.truetype("ShrutiMusic/assets/font.ttf", size=45)
+
+    # Modern Gradient Style Text
+    def draw_shadow_text(position, text, font, fill="white"):
+        x, y = position
+        draw.text((x+3, y+3), text, font=font, fill="black")  # shadow
+        draw.text(position, text, font=font, fill=fill)
+
+    # Main Welcome Title
+    draw_shadow_text((180, 160), f"✨ Welcome ✨", font_big, fill="#FFD700")
+
+    # User Info
+    draw_shadow_text((100, 300), f"👤 Name: {unidecode(user)}", font_med, fill="#00E5FF")
+    draw_shadow_text((100, 380), f"🔖 Username: @{uname if uname else 'Not Set'}", font_med, fill="#ADFF2F")
+    draw_shadow_text((100, 460), f"🆔 User ID: {id}", font_med, fill="#FF69B4")
+    draw_shadow_text((100, 540), f"🏡 Group: {chat}", font_med, fill="#FFA500")
+
+    # Footer
+    draw_shadow_text((200, 680), "🎵 Enjoy the best music experience 🎵", font_small, fill="#FFFFFF")
+
+    path = f"downloads/welcome#{id}.png"
+    background.save(path)
+    return path
+
+# ✅ /welcome Command
 @app.on_message(filters.command("welcome") & ~filters.private)
 async def auto_state(_, message):
-    usage = "**❖ ᴜsᴀɢᴇ ➥** /welcome [on|off]"
+    usage = "✨ **Usage:** /welcome [on|off]"
     if len(message.command) == 1:
         return await message.reply_text(usage)
 
@@ -71,30 +66,29 @@ async def auto_state(_, message):
 
         if state == "on":
             if A and not A.get("disabled", False):
-                return await message.reply_text("✦ Special Welcome Already Enabled")
+                return await message.reply_text("✅ Special Welcome is already **enabled**")
             await wlcm.update_one({"chat_id": chat_id}, {"$set": {"disabled": False}}, upsert=True)
-            await message.reply_text(f"✦ Enabled Special Welcome in {message.chat.title}")
+            await message.reply_text("🎉 Special Welcome **Enabled** in this group!")
 
         elif state == "off":
             if A and A.get("disabled", False):
-                return await message.reply_text("✦ Special Welcome Already Disabled")
+                return await message.reply_text("❌ Special Welcome is already **disabled**")
             await wlcm.update_one({"chat_id": chat_id}, {"$set": {"disabled": True}}, upsert=True)
-            await message.reply_text(f"✦ Disabled Special Welcome in {message.chat.title}")
+            await message.reply_text("🚫 Special Welcome **Disabled** in this group!")
 
         else:
             await message.reply_text(usage)
     else:
-        await message.reply("✦ Only Admins Can Use This Command")
+        await message.reply("⚠️ Only Admins can use this command.")
 
-# ✅ Special Welcome Message (By Default ON)
+# ✅ Special Welcome
 @app.on_chat_member_updated(filters.group, group=-3)
 async def greet_group(_, member: ChatMemberUpdated):
     chat_id = member.chat.id
     A = await wlcm.find_one({"chat_id": chat_id})
 
-    # ✅ Default ON: Lekin agar disable kiya gaya hai to OFF rahe
-    if A and A.get("disabled", False):  
-        return  # Agar OFF hai, to kuch mat karo
+    if A and A.get("disabled", False):
+        return
 
     if (
         not member.new_chat_member
@@ -104,12 +98,6 @@ async def greet_group(_, member: ChatMemberUpdated):
         return
 
     user = member.new_chat_member.user if member.new_chat_member else member.from_user
-    try:
-        pic = await app.download_media(
-            user.photo.big_file_id, file_name=f"pp{user.id}.png"
-        )
-    except AttributeError:
-        pic = "ShrutiMusic/assets/upic.png"
 
     if (temp.MELCOW).get(f"welcome-{member.chat.id}") is not None:
         try:
@@ -119,34 +107,29 @@ async def greet_group(_, member: ChatMemberUpdated):
 
     try:
         welcomeimg = welcomepic(
-            pic, user.first_name, member.chat.title, user.id, user.username
+            user.first_name, member.chat.title, user.id, user.username
         )
         temp.MELCOW[f"welcome-{member.chat.id}"] = await app.send_photo(
             member.chat.id,
             photo=welcomeimg,
             caption=f"""
-🌸✨ ──────────────────── ✨🌸
+🌸✨ ──────────────── ✨🌸
 
-         🎊 <b>ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴏᴜʀ ғᴀᴍɪʟʏ</b> 🎊
+<b>🎊 Welcome {user.mention} 🎊</b>
 
-🌹 <b>ɴᴀᴍᴇ</b> ➤ {user.mention}
-🌺 <b>ᴜsᴇʀɴᴀᴍᴇ</b> ➤ @{user.username if user.username else "ɴᴏᴛ sᴇᴛ"}
-🆔 <b>ᴜsᴇʀ ɪᴅ</b> ➤ <code>{user.id}</code>
-🏠 <b>ɢʀᴏᴜᴘ</b> ➤ {member.chat.title}
+🏡 Group : <b>{member.chat.title}</b>  
+🆔 User ID : <code>{user.id}</code>  
+🔖 Username : @{user.username if user.username else "Not Set"}  
 
-═════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━  
+💖 <b>We’re so happy to have you here!</b>  
+🎵 Enjoy the best music experience 🎵  
 
-💕 <b>ᴡᴇ'ʀᴇ sᴏ ʜᴀᴘᴘʏ ᴛᴏ ʜᴀᴠᴇ ʏᴏᴜ ʜᴇʀᴇ!</b> 
-🎵 <b>ᴇɴᴊᴏʏ ᴛʜᴇ ʙᴇsᴛ ᴍᴜsɪᴄ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b> 🎵
-
-✨ <b>ғᴇᴇʟ ғʀᴇᴇ ᴛᴏ sʜᴀʀᴇ ᴀɴᴅ ᴇɴᴊᴏʏ!</b> ✨
-
-<blockquote><b>💝 ᴘᴏᴡᴇʀᴇᴅ ʙʏ ➤ <a href="https://t.me/{app.username}?start=help">Mᴜsɪᴄ ʙᴏᴛs🎶💖</a></b></blockquote>
-
-🌸✨ ──────────────────── ✨🌸
+<blockquote>⚡ Powered by ➤ <a href="https://t.me/{app.username}?start=help">ShrutiMusic</a></blockquote>
+🌸✨ ──────────────── ✨🌸
 """,
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎵 ᴀᴅᴅ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ 🎵", url=f"https://t.me/{app.username}?startgroup=True")]
+                [InlineKeyboardButton("➕ Add Me To Your Group", url=f"https://t.me/{app.username}?startgroup=True")]
             ]),
         )
 
@@ -155,18 +138,5 @@ async def greet_group(_, member: ChatMemberUpdated):
 
     try:
         os.remove(f"downloads/welcome#{user.id}.png")
-        os.remove(f"downloads/pp{user.id}.png")
     except Exception:
         pass
-
-
-# ©️ Copyright Reserved - @NoxxOP  Nand Yaduwanshi
-
-# ===========================================
-# ©️ 2025 Nand Yaduwanshi (aka @NoxxOP)
-# 🔗 GitHub : https://github.com/NoxxOP/ShrutiMusic
-# 📢 Telegram Channel : https://t.me/ShrutiBots
-# ===========================================
-
-
-# ❤️ Love From ShrutiBots 
