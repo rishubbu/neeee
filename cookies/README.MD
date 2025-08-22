@@ -30,7 +30,7 @@ If you face any difficulties or don’t know how to extract cookies, feel free t
                   🔐 𝐂𝐫𝐞𝐝𝐢𝐭𝐬 & 𝐂𝐨𝐧𝐭𝐚𝐜𝐭 🔐
 
 Developed and Maintained by:
-- Telegram: @WTF_WhyMeeh
-- Telegram: @ShrutiBots
+- Telegram: @ganaasupport
+- Telegram: @ganaasupport
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
